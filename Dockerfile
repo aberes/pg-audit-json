@@ -12,7 +12,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* \
 
 ARG PG_AUDIT_JSON_VERSION
-ENV PG_AUDIT_JSON_VERSION=${PG_AUDIT_JSON_VERSION:-1.0.2}
+ENV PG_AUDIT_JSON_VERSION=${PG_AUDIT_JSON_VERSION:-1.0.3}
 WORKDIR /usr/local/src
 COPY . .
 RUN make install

@@ -189,6 +189,7 @@ CREATE INDEX log_action_idx ON audit.log(action);
 -- Allow the user of the extension to create a backup of the audit log data
 --
 SELECT pg_catalog.pg_extension_config_dump('audit.log', '');
+SELECT pg_catalog.pg_extension_config_dump('audit.log_id_seq', '');
 
 CREATE OR REPLACE FUNCTION audit.if_modified_func()
 RETURNS TRIGGER
@@ -302,7 +303,8 @@ CREATE OR REPLACE FUNCTION audit.audit_table(
   target_table REGCLASS,
   audit_rows BOOLEAN,
   audit_query_text BOOLEAN,
-  ignored_cols TEXT[]
+  ignored_cols TEXT[],
+  ignored_users TEXT[]
 )
 RETURNS VOID
 LANGUAGE 'plpgsql'
@@ -311,9 +313,14 @@ DECLARE
   stm_targets TEXT = 'INSERT OR UPDATE OR DELETE OR TRUNCATE';
   _q_txt TEXT;
   _ignored_cols_snip TEXT = '';
+  _ignored_users_snip TEXT = '';
 BEGIN
   EXECUTE 'DROP TRIGGER IF EXISTS audit_trigger_row ON ' || target_table::TEXT;
   EXECUTE 'DROP TRIGGER IF EXISTS audit_trigger_stm ON ' || target_table::TEXT;
+
+  IF array_length(ignored_users,1) > 0 THEN
+	_ignored_users_snip = 'WHEN (SESSION_USER <> ALL (' || quote_literal(ignored_users) || '::TEXT[])) ';
+  END IF;
 
   IF audit_rows THEN
     IF array_length(ignored_cols,1) > 0 THEN
@@ -322,7 +329,9 @@ BEGIN
     _q_txt = 'CREATE TRIGGER audit_trigger_row '
              'AFTER INSERT OR UPDATE OR DELETE ON ' ||
              target_table::TEXT ||
-             ' FOR EACH ROW EXECUTE PROCEDURE audit.if_modified_func(' ||
+             ' FOR EACH ROW ' ||
+             _ignored_users_snip ||
+             'EXECUTE PROCEDURE audit.if_modified_func(' ||
              quote_literal(audit_query_text) ||
              _ignored_cols_snip ||
              ');';
@@ -333,14 +342,16 @@ BEGIN
 
   _q_txt = 'CREATE TRIGGER audit_trigger_stm AFTER ' || stm_targets || ' ON ' ||
            target_table ||
-           ' FOR EACH STATEMENT EXECUTE PROCEDURE audit.if_modified_func('||
+           ' FOR EACH STATEMENT ' ||
+           _ignored_users_snip ||
+           'EXECUTE PROCEDURE audit.if_modified_func('||
            quote_literal(audit_query_text) || ');';
   RAISE NOTICE '%', _q_txt;
   EXECUTE _q_txt;
 END;
 $$;
 
-COMMENT ON FUNCTION audit.audit_table(REGCLASS, BOOLEAN, BOOLEAN, TEXT[]) IS $$
+COMMENT ON FUNCTION audit.audit_table(REGCLASS, BOOLEAN, BOOLEAN, TEXT[], TEXT[]) IS $$
 Add auditing support to a table.
 
 Arguments:
@@ -350,6 +361,7 @@ Arguments:
                      the audit event?
    ignored_cols:     Columns to exclude from update diffs,
                      ignore updates that change only ignored cols.
+   ignored_users:    Do not log queries from ignored users. 
 $$;
 
 --
@@ -363,7 +375,7 @@ CREATE OR REPLACE FUNCTION audit.audit_table(
 RETURNS VOID
 LANGUAGE SQL
 AS $$
-  SELECT audit.audit_table($1, $2, $3, ARRAY[]::TEXT[]);
+  SELECT audit.audit_table($1, $2, $3, ARRAY[]::TEXT[], ARRAY[]::TEXT[]);
 $$;
 
 --
@@ -379,5 +391,5 @@ $$;
 
 COMMENT ON FUNCTION audit.audit_table(REGCLASS) IS $$
 Add auditing support to the given table. Row-level changes will be logged with
-full client query text. No cols are ignored.
+full client query text. No cols or users are ignored.
 $$;

@@ -16,25 +16,18 @@ EXTENSION    = $(shell grep -m 1 '"name":' META.json | \
 EXTVERSION   = $(shell grep -m 1 '"version":' META.json | \
 								sed -e 's/[[:space:]]*"version":[[:space:]]*"\([^"]*\)",\{0,1\}/\1/')
 
-DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
-
+DATA         = $(wildcard sql/*--*.sql)
+EXTRA_CLEAN  = sql/$(EXTENSION)--$(EXTVERSION).sql
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
 PG_CONFIG    = pg_config
-PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\\.| 9\\.0" && echo no || echo yes)
 
-ifeq ($(PG91),yes)
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
-# TODO: This appears to copy the extenion file twice
-#DATA = $(wildcard sql/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
-DATA = $(wildcard sql/*--*.sql)
-EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql
-endif
-
-PGXS := $(shell $(PG_CONFIG) --pgxs)
-include $(PGXS)

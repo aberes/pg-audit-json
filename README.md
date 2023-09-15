@@ -86,6 +86,9 @@ SELECT audit.audit_table('myschema.mytable');
 
 -- Ignore columns "foo" and "bar"
 SELECT audit.audit_table('mytable', true, true, '{foo,bar}');
+
+-- Ignore users "user1" and "user2"
+SELECT audit.audit_table('mytable', true, true, '{}', '{user1,user2}');
 ```
 
 ### Setting application runtime variables

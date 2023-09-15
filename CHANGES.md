@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3] - 2023-09-15
+
+Initial fork from m-martinez/pg-audit-json
+
+### Changed
+- Introduce ignored_users parameter (do not store audit log if SESSION_USER in ignored_users)
+- Simplify installation process
+
 ## [1.0.2] - 2020-06-21
 
 ### Changed
@@ -35,6 +43,7 @@ Initial fork
 - Added columns `application_name` and `application_user` that are populated
   via configurable runtime settings.
 
+[1.0.3]: https://github.com/aberes/pg-audit-json/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/m-martinez/pg-audit-json/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/m-martinez/pg-audit-json/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/m-martinez/pg-audit-json/compare/05137fa...1.0.0
